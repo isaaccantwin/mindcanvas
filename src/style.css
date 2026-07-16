@@ -1,0 +1,440 @@
+/* ============================================
+   MindCanvas — 手寫心智圖工具
+   風格：米白紙底 + 手繪感
+   ============================================ */
+
+:root {
+  --paper-bg: #f5f0e8;
+  --paper-line: #e8e0d0;
+  --ink-dark: #2c2c2c;
+  --ink-medium: #5a5a5a;
+  --ink-light: #8a8a8a;
+  --accent: #d4a574;
+  --accent-light: #e8c9a8;
+  --accent-dark: #b8834a;
+  --node-bg: #faf6ef;
+  --node-border: #c8b89a;
+  --node-shadow: rgba(0,0,0,0.08);
+  --selected-border: #d4a574;
+  --toolbar-bg: rgba(245, 240, 232, 0.92);
+  --toolbar-border: #d8d0c0;
+  --modal-bg: #faf6ef;
+  --text-primary: #2c2c2c;
+  --text-secondary: #6a5a4a;
+  --danger: #c0392b;
+  --success: #27ae60;
+  --font-hand: 'Caveat', 'Bradley Hand', cursive;
+  --font-body: 'Noto Sans TC', -apple-system, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-body);
+  background: var(--paper-bg);
+  color: var(--text-primary);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Toolbar ─── */
+#toolbar {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  overflow-x: auto;
+  min-height: 48px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border-right: 1px solid var(--toolbar-border);
+}
+
+.toolbar-group:last-child {
+  border-right: none;
+}
+
+.toolbar-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 16px;
+}
+
+.tool-btn:hover {
+  background: rgba(200, 180, 140, 0.15);
+  color: var(--ink-dark);
+}
+
+.tool-btn:active {
+  transform: scale(0.92);
+}
+
+.tool-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
+.color-picker-container {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid var(--node-border);
+}
+
+.color-picker-container input[type="color"] {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+.size-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-light);
+  white-space: nowrap;
+}
+
+.size-control input[type="range"] {
+  width: 60px;
+  height: 4px;
+  accent-color: var(--accent);
+}
+
+#zoom-level {
+  font-size: 12px;
+  color: var(--ink-light);
+  min-width: 40px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Status Bar ─── */
+#status-bar {
+  position: relative;
+  z-index: 99;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 16px;
+  font-size: 12px;
+  color: var(--ink-light);
+  background: rgba(245, 240, 232, 0.6);
+  border-bottom: 1px solid var(--toolbar-border);
+  flex-shrink: 0;
+  min-height: 24px;
+}
+
+#status-text {
+  font-family: var(--font-body);
+}
+
+#mode-indicator {
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+/* ─── Canvas ─── */
+#canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--paper-bg);
+  /* 紙張紋路透過 pseudo 元素添加 */
+}
+
+#canvas-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 28px,
+      rgba(200, 190, 170, 0.15) 28px,
+      rgba(200, 190, 170, 0.15) 29px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+#main-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  z-index: 1;
+  touch-action: none;
+}
+
+#main-canvas:active {
+  cursor: grabbing;
+}
+
+/* ─── Node Text Editor Overlay ─── */
+.node-editor {
+  position: absolute;
+  z-index: 200;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--ink-dark);
+  padding: 4px 8px;
+  min-width: 30px;
+  min-height: 24px;
+  resize: none;
+  overflow: hidden;
+  text-align: center;
+  line-height: 1.4;
+  caret-color: var(--accent-dark);
+}
+
+.node-editor::placeholder {
+  color: var(--ink-light);
+  opacity: 0.6;
+}
+
+/* ─── Modal ─── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--modal-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  width: 90%;
+  max-width: 480px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--node-border);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--ink-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.close-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--ink-dark);
+}
+
+.modal-body {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.empty-msg {
+  text-align: center;
+  color: var(--ink-light);
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.file-item:hover {
+  background: rgba(200, 180, 140, 0.1);
+  border-color: var(--accent-light);
+}
+
+.file-item-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.file-item-date {
+  font-size: 12px;
+  color: var(--ink-light);
+}
+
+.file-item-delete {
+  background: none;
+  border: none;
+  color: var(--ink-light);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.file-item-delete:hover {
+  color: var(--danger);
+  background: rgba(192, 57, 43, 0.08);
+}
+
+/* ─── Context Menu ─── */
+.context-menu {
+  position: fixed;
+  z-index: 300;
+  background: var(--modal-bg);
+  border: 1px solid var(--node-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  min-width: 160px;
+  padding: 4px;
+}
+
+.context-menu.hidden {
+  display: none;
+}
+
+.context-menu-item {
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.context-menu-item:hover {
+  background: rgba(200, 180, 140, 0.15);
+}
+
+.context-menu-item.danger {
+  color: var(--danger);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--toolbar-border);
+  margin: 4px 8px;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--node-border);
+  border-radius: 3px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 640px) {
+  #toolbar {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+  .tool-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .tool-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .size-control input[type="range"] {
+    width: 40px;
+  }
+}
