@@ -29,6 +29,7 @@ class MindCanvasApp {
 
     this.mode = 'edit'; // 'edit' | 'ink'
     this.selectedNodeId = null;
+    this.editingNodeId = null;
     this.draggingNode = null;
     this.dragOffset = { x: 0, y: 0 };
     this.isPanning = false;
@@ -411,6 +412,7 @@ class MindCanvasApp {
       textarea.remove();
       this._activeEditor = null;
       this._activeEditorNode = null;
+      this.editingNodeId = null;
     };
 
     textarea.addEventListener('blur', () => finish(true));
@@ -426,6 +428,7 @@ class MindCanvasApp {
 
     this._activeEditor = textarea;
     this._activeEditorNode = node;
+    this.editingNodeId = node.id;
   }
 
   _hitTestNode(wx, wy) {
@@ -677,7 +680,7 @@ class MindCanvasApp {
       this._activeEditor.style.fontSize = (14 * this.ce.zoom) + 'px';
     }
 
-    this.renderer.render(this.mindMap, this.selectedNodeId, this.ink);
+    this.renderer.render(this.mindMap, this.selectedNodeId, this.ink, this.editingNodeId);
     this._autoSave();
     requestAnimationFrame(() => this._renderLoop());
   }

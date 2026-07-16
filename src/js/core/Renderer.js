@@ -9,7 +9,7 @@ export class Renderer {
   }
 
   /** 主渲染循環 */
-  render(mindMap, selectedNodeId, inkEngine) {
+  render(mindMap, selectedNodeId, inkEngine, editingNodeId) {
     const ctx = this.ctx;
     const ce = this.ce;
 
@@ -31,7 +31,8 @@ export class Renderer {
     const nodes = mindMap.getAllVisible();
     for (const node of nodes) {
       const isSelected = node.id === selectedNodeId;
-      this._drawNode(node, isSelected);
+      const isEditing = node.id === editingNodeId;
+      this._drawNode(node, isSelected, isEditing);
     }
 
     ce.restoreTransform();
@@ -44,7 +45,7 @@ export class Renderer {
     }
   }
 
-  _drawNode(node, isSelected) {
+  _drawNode(node, isSelected, isEditing) {
     const ctx = this.ctx;
     const x = node.x;
     const y = node.y;
@@ -87,23 +88,23 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // 文字
-    ctx.fillStyle = node.color || '#2c2c2c';
-    ctx.font = '14px "Noto Sans TC", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // 文字（編輯中不畫，避免與 textarea 重疊）
+    if (!isEditing) {
+      ctx.fillStyle = node.color || '#2c2c2c';
+      ctx.font = '14px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
 
-    const displayText = node.isRoot ? node.text : node.text;
-    // 如果文字太長，截斷
-    let text = displayText;
-    const maxWidth = w - 16;
-    if (ctx.measureText(text).width > maxWidth) {
-      while (ctx.measureText(text + '…').width > maxWidth && text.length > 1) {
-        text = text.slice(0, -1);
+      let text = node.text;
+      const maxWidth = w - 16;
+      if (ctx.measureText(text).width > maxWidth) {
+        while (ctx.measureText(text + '…').width > maxWidth && text.length > 1) {
+          text = text.slice(0, -1);
+        }
+        text += '…';
       }
-      text += '…';
+      ctx.fillText(text, x, y);
     }
-    ctx.fillText(text, x, y);
 
     // 子節點數量標記（折疊時顯示數量）
     if (node.children.length > 0 && node.collapsed) {
