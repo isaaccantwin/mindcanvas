@@ -3,9 +3,10 @@
  * 負責渲染心智圖節點、連線、手寫筆跡
  */
 export class Renderer {
-  constructor(canvasEngine) {
+  constructor(canvasEngine, deviceConfig) {
     this.ce = canvasEngine;
     this.ctx = canvasEngine.ctx;
+    this.device = deviceConfig;
   }
 
   /** 主渲染循環 */
@@ -91,7 +92,7 @@ export class Renderer {
     // 文字（編輯中不畫，避免與 textarea 重疊）
     if (!isEditing) {
       ctx.fillStyle = node.color || '#2c2c2c';
-      ctx.font = '14px "Noto Sans TC", sans-serif';
+      ctx.font = `${this.device.fontSize}px "Noto Sans TC", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 

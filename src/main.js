@@ -5,6 +5,7 @@
 import { CanvasEngine } from './js/core/CanvasEngine.js';
 import { EventManager } from './js/core/EventManager.js';
 import { Renderer } from './js/core/Renderer.js';
+import { DeviceConfig } from './js/core/DeviceConfig.js';
 import { MindMap } from './js/mindmap/MindMap.js';
 import { LayoutEngine } from './js/mindmap/LayoutEngine.js';
 import { InkEngine } from './js/ink/InkEngine.js';
@@ -18,10 +19,16 @@ class MindCanvasApp {
   constructor() {
     this.canvas = document.getElementById('main-canvas');
     this.ce = new CanvasEngine(this.canvas);
+    this.device = new DeviceConfig();
     this.events = new EventManager(this.canvas);
-    this.renderer = new Renderer(this.ce);
+    this.renderer = new Renderer(this.ce, this.device);
     this.mindMap = new MindMap();
-    this.layout = new LayoutEngine();
+    this.layout = new LayoutEngine({
+      hGap: this.device.hGap,
+      vGap: this.device.vGap,
+      nodeWidth: this.device.nodeWidth,
+      nodeHeight: this.device.nodeHeight,
+    });
     this.ink = new InkEngine();
     this.storage = new Storage();
     this.gitSync = new GitSync();
@@ -57,6 +64,15 @@ class MindCanvasApp {
     this.ce.resize();
     window.addEventListener('resize', () => {
       this.ce.resize();
+      // 視窗縮放時更新裝置設定並重新佈局
+      this.device._update();
+      this.layout = new LayoutEngine({
+        hGap: this.device.hGap,
+        vGap: this.device.vGap,
+        nodeWidth: this.device.nodeWidth,
+        nodeHeight: this.device.nodeHeight,
+      });
+      this.layout.layout(this.mindMap);
     });
   }
 
@@ -395,7 +411,7 @@ class MindCanvasApp {
     textarea.style.top = (canvasRect.top + screen.y - node.height / 2 * this.ce.zoom + 4 * this.ce.zoom) + 'px';
     textarea.style.width = Math.max(30, node.width * this.ce.zoom - 12 * this.ce.zoom) + 'px';
     textarea.style.height = Math.max(24, node.height * this.ce.zoom - 8 * this.ce.zoom) + 'px';
-    textarea.style.fontSize = (14 * this.ce.zoom) + 'px';
+    textarea.style.fontSize = (this.device.fontSize * this.ce.zoom) + 'px';
     textarea.style.zIndex = '999';
 
     document.body.appendChild(textarea);
@@ -409,8 +425,8 @@ class MindCanvasApp {
         const ctx = this.ce.ctx;
         ctx.font = '14px "Noto Sans TC", sans-serif';
         const textWidth = ctx.measureText(node.text).width;
-        node.width = Math.max(120, Math.min(280, textWidth + 24));
-        node.height = 40;
+        node.width = Math.max(this.device.nodeWidth, Math.min(280, textWidth + 24));
+        node.height = this.device.nodeHeight;
         this.isDirty = true;
       }
       textarea.remove();
@@ -734,7 +750,7 @@ class MindCanvasApp {
       this._activeEditor.style.top = (canvasRect.top + screen.y - node.height / 2 * this.ce.zoom + 4 * this.ce.zoom) + 'px';
       this._activeEditor.style.width = Math.max(30, node.width * this.ce.zoom - 12 * this.ce.zoom) + 'px';
       this._activeEditor.style.height = Math.max(24, node.height * this.ce.zoom - 8 * this.ce.zoom) + 'px';
-      this._activeEditor.style.fontSize = (14 * this.ce.zoom) + 'px';
+      this._activeEditor.style.fontSize = (this.device.fontSize * this.ce.zoom) + 'px';
     }
 
     this.renderer.render(this.mindMap, this.selectedNodeId, this.ink, this.editingNodeId);
