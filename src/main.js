@@ -12,6 +12,7 @@ import { Storage } from './js/storage/Storage.js';
 import { Toolbar } from './js/ui/Toolbar.js';
 import { FileManager } from './js/ui/FileManager.js';
 import { ContextMenu } from './js/ui/ContextMenu.js';
+import { GitSync } from './js/sync/GitSync.js';
 
 class MindCanvasApp {
   constructor() {
@@ -23,6 +24,7 @@ class MindCanvasApp {
     this.layout = new LayoutEngine();
     this.ink = new InkEngine();
     this.storage = new Storage();
+    this.gitSync = new GitSync();
     this.toolbar = new Toolbar();
     this.fileManager = new FileManager(this.storage);
     this.contextMenu = new ContextMenu();
@@ -40,6 +42,7 @@ class MindCanvasApp {
     this.currentProjectName = '未命名心智圖';
     this.isDirty = false;
     this.autoSaveTimer = null;
+    this._syncFrameCount = 0;
 
     this._initCanvas();
     this._initEvents();
@@ -302,6 +305,7 @@ class MindCanvasApp {
     });
 
     // File operations
+    document.getElementById('btn-sync').addEventListener('click', () => this._syncNow());
     document.getElementById('btn-save').addEventListener('click', () => this._saveProject());
     document.getElementById('btn-open').addEventListener('click', () => this._openProject());
     document.getElementById('btn-export').addEventListener('click', () => this._exportPNG());
@@ -463,6 +467,15 @@ class MindCanvasApp {
   async _loadAutoSave() {
     try {
       await this.storage.init();
+      this.storage.sync = this.gitSync;
+
+      // 初始化同步
+      const online = await this.gitSync.checkHealth();
+      if (online) {
+        await this.gitSync.pull();
+        this._updateSyncUI();
+      }
+
       const autoSave = await this.storage.getAutoSave();
       if (autoSave) {
         this._loadProjectData(autoSave);
@@ -489,31 +502,7 @@ class MindCanvasApp {
   }
 
   async _saveProject() {
-    const data = {
-      name: this.currentProjectName,
-      mindmap: this.mindMap.toJSON(),
-      ink: this.ink.toJSON(),
-      nodeCount: this.mindMap.getAll().length,
-    };
-
-    if (this.currentProjectId) {
-      data.id = this.currentProjectId;
-    } else {
-      const name = await this.fileManager.saveAs(this.currentProjectName);
-      if (!name) return;
-      data.name = name;
-      this.currentProjectName = name;
-    }
-
-    try {
-      const id = await this.storage.save(data);
-      this.currentProjectId = id;
-      this.isDirty = false;
-      this.toolbar.setStatus(`已儲存：${data.name}`);
-    } catch (e) {
-      console.error('Save failed:', e);
-      this.toolbar.setStatus('❌ 儲存失敗');
-    }
+    await this._saveProjectInternal();
   }
 
   async _openProject() {
@@ -654,6 +643,74 @@ class MindCanvasApp {
     this.toolbar.setStatus('✅ 已匯出 PNG');
   }
 
+  // ─── 同步 ───
+
+  _updateSyncUI() {
+    const el = document.getElementById('sync-status');
+    const label = document.getElementById('sync-label');
+    if (!el) return;
+    const dot = el.querySelector('.dot');
+    if (this.gitSync.syncing) {
+      dot.className = 'dot syncing';
+      label.textContent = '同步中…';
+    } else if (this.gitSync.ready) {
+      dot.className = 'dot online';
+      label.textContent = this.gitSync.hasRemote ? '已連線' : '本機';
+    } else {
+      dot.className = 'dot offline';
+      label.textContent = '離線';
+    }
+  }
+
+  async _syncNow() {
+    if (!this.gitSync.ready) {
+      const online = await this.gitSync.checkHealth();
+      if (!online) {
+        this.toolbar.setStatus('⚠️ 同步服務未啟動（請用 npx vite 啟動）');
+        return;
+      }
+      await this.gitSync.pull();
+    }
+
+    // 先存檔再同步
+    await this._saveProjectInternal(true);
+    this._updateSyncUI();
+  }
+
+  async _saveProjectInternal(forceSync = false) {
+    const data = {
+      name: this.currentProjectName,
+      mindmap: this.mindMap.toJSON(),
+      ink: this.ink.toJSON(),
+      nodeCount: this.mindMap.getAll().length,
+    };
+
+    if (this.currentProjectId) {
+      data.id = this.currentProjectId;
+    } else {
+      const name = await this.fileManager.saveAs(this.currentProjectName);
+      if (!name) return;
+      data.name = name;
+      this.currentProjectName = name;
+    }
+
+    try {
+      const result = await this.storage.save(data);
+      this.currentProjectId = result.id;
+      this.isDirty = false;
+
+      if (this.gitSync.ready) {
+        this.toolbar.setStatus(`已同步：${data.name}`);
+      } else {
+        this.toolbar.setStatus(`已儲存：${data.name}`);
+      }
+      this._updateSyncUI();
+    } catch (e) {
+      console.error('Save failed:', e);
+      this.toolbar.setStatus('❌ 儲存失敗');
+    }
+  }
+
   // ─── 自動儲存 ───
 
   _autoSave() {
@@ -682,6 +739,13 @@ class MindCanvasApp {
 
     this.renderer.render(this.mindMap, this.selectedNodeId, this.ink, this.editingNodeId);
     this._autoSave();
+
+    // 每 60 幀更新一次同步狀態
+    if (++this._syncFrameCount > 60) {
+      this._syncFrameCount = 0;
+      this._updateSyncUI();
+    }
+
     requestAnimationFrame(() => this._renderLoop());
   }
 }
