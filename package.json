@@ -9,6 +9,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "googleapis": "^173.0.0",
     "simple-git": "^3.36.0"
   },
   "devDependencies": {

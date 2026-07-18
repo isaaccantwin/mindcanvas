@@ -136,22 +136,26 @@ class MindCanvasApp {
         loginErr.classList.remove('hidden');
         return;
       }
-      const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
-      if (!data[username]) {
-        loginErr.textContent = '❌ 帳號不存在';
+      fetch('/api/sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', username, password }),
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          sessionStorage.setItem('mc_user', JSON.stringify({ username }));
+          sessionStorage.setItem('mc_token', 'sheets');
+          this.authMode = 'user';
+          this.authUsername = username;
+          closeModal();
+          updateUI();
+        } else {
+          loginErr.textContent = data.error === '帳號或密碼錯誤' ? '❌ 帳號或密碼錯誤' : '❌ ' + data.error;
+          loginErr.classList.remove('hidden');
+        }
+      }).catch(() => {
+        loginErr.textContent = '❌ 無法連線伺服器';
         loginErr.classList.remove('hidden');
-        return;
-      }
-      if (data[username] !== password) {
-        loginErr.textContent = '❌ 密碼錯誤';
-        loginErr.classList.remove('hidden');
-        return;
-      }
-      sessionStorage.setItem('mc_user', JSON.stringify({ username }));
-      this.authMode = 'user';
-      this.authUsername = username;
-      closeModal();
-      updateUI();
+      });
     };
 
     el('login-submit').addEventListener('click', doLogin);
@@ -206,19 +210,26 @@ class MindCanvasApp {
         regErr.classList.remove('hidden');
         return;
       }
-      const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
-      if (data[username]) {
-        regErr.textContent = '❌ 此名稱已被註冊';
+      fetch('/api/sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register', username, password }),
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          sessionStorage.setItem('mc_user', JSON.stringify({ username }));
+          sessionStorage.setItem('mc_token', 'sheets');
+          this.authMode = 'user';
+          this.authUsername = username;
+          closeModal();
+          updateUI();
+        } else {
+          regErr.textContent = '❌ ' + data.error;
+          regErr.classList.remove('hidden');
+        }
+      }).catch(() => {
+        regErr.textContent = '❌ 無法連線伺服器';
         regErr.classList.remove('hidden');
-        return;
-      }
-      data[username] = password;
-      localStorage.setItem('mc_users', JSON.stringify(data));
-      sessionStorage.setItem('mc_user', JSON.stringify({ username }));
-      this.authMode = 'user';
-      this.authUsername = username;
-      closeModal();
-      updateUI();
+      });
     };
 
     el('reg-submit').addEventListener('click', doRegister);
@@ -234,14 +245,11 @@ class MindCanvasApp {
 
     // ── 檢查 session ──
     const saved = sessionStorage.getItem('mc_user');
-    if (saved) {
+    if (saved && sessionStorage.getItem('mc_token') === 'sheets') {
       try {
         const { username } = JSON.parse(saved);
-        const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
-        if (data[username]) {
-          this.authMode = 'user';
-          this.authUsername = username;
-        }
+        this.authMode = 'user';
+        this.authUsername = username;
       } catch {}
     }
     updateUI();
