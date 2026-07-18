@@ -11,6 +11,7 @@ export class EventManager {
       onPointerMove: null,
       onPointerUp: null,
       onWheel: null,
+      onDblClick: null,
     };
     this._activePointerId = null;
     this._bind();
@@ -73,6 +74,13 @@ export class EventManager {
         this.handlers.onContextMenu(this._extract(e));
       }
       e.preventDefault();
+    });
+
+    // 雙擊
+    el.addEventListener('dblclick', (e) => {
+      if (this.handlers.onDblClick) {
+        this.handlers.onDblClick(this._extract(e));
+      }
     });
   }
 

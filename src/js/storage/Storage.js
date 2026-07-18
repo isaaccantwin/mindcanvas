@@ -1,10 +1,11 @@
 /**
- * Storage — IndexedDB 封裝 + Git 同步整合
- * 儲存心智圖檔案（含筆跡）
+ * Storage — IndexedDB 封裝 + Git 同步 + 版本歷史
  */
 const DB_NAME = 'MindCanvasDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'projects';
+const VERSION_STORE = 'versions';
+const MAX_VERSIONS = 20;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -16,6 +17,11 @@ function openDB() {
         store.createIndex('name', 'name', { unique: false });
         store.createIndex('updatedAt', 'updatedAt', { unique: false });
       }
+      if (!db.objectStoreNames.contains(VERSION_STORE)) {
+        const vs = db.createObjectStore(VERSION_STORE, { keyPath: 'vid', autoIncrement: true });
+        vs.createIndex('projectId', 'projectId', { unique: false });
+        vs.createIndex('savedAt', 'savedAt', { unique: false });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -25,7 +31,7 @@ function openDB() {
 export class Storage {
   constructor() {
     this.db = null;
-    this.sync = null; // GitSync instance, set by app
+    this.sync = null;
   }
 
   async init() {
@@ -64,8 +70,7 @@ export class Storage {
   }
 
   /**
-   * 儲存專案（IndexedDB + Git 同步）
-   * 回傳 { id, synced }
+   * 儲存專案 + 保留版本歷史
    */
   async save(data) {
     const db = await openDB();
@@ -82,7 +87,11 @@ export class Storage {
       req.onerror = () => reject(req.error);
     });
 
-    // Git 同步（非同步，不阻擋）
+    // 儲存版本快照（保留最近 MAX_VERSIONS 個）
+    await this._saveVersion(db, id, item);
+    await this._pruneVersions(db, id);
+
+    // Git 同步
     let synced = false;
     if (this.sync && this.sync.ready) {
       this.sync.save(String(id), item.name, item).then(r => {
@@ -91,6 +100,86 @@ export class Storage {
     }
 
     return { id, synced };
+  }
+
+  async _saveVersion(db, projectId, data) {
+    const tx = db.transaction(VERSION_STORE, 'readwrite');
+    const store = tx.objectStore(VERSION_STORE);
+    return new Promise((resolve, reject) => {
+      const req = store.add({
+        projectId: Number(projectId),
+        name: data.name,
+        mindmap: data.mindmap,
+        ink: data.ink,
+        nodeCount: data.nodeCount,
+        savedAt: new Date().toISOString(),
+      });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async _pruneVersions(db, projectId) {
+    const tx = db.transaction(VERSION_STORE, 'readwrite');
+    const store = tx.objectStore(VERSION_STORE);
+    const index = store.index('projectId');
+    const req = index.getAll(Number(projectId));
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => {
+        const versions = req.result;
+        if (versions.length <= MAX_VERSIONS) { resolve(); return; }
+        // 刪除最舊的
+        versions.sort((a, b) => new Date(a.savedAt) - new Date(b.savedAt));
+        const toDelete = versions.slice(0, versions.length - MAX_VERSIONS);
+        const tx2 = db.transaction(VERSION_STORE, 'readwrite');
+        const s2 = tx2.objectStore(VERSION_STORE);
+        for (const v of toDelete) s2.delete(v.vid);
+        tx2.oncomplete = () => resolve();
+        tx2.onerror = () => reject();
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /** 取得某個專案的所有版本歷史 */
+  async getVersions(projectId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(VERSION_STORE, 'readonly');
+      const index = tx.objectStore(VERSION_STORE).index('projectId');
+      const req = index.getAll(Number(projectId));
+      req.onsuccess = () => {
+        const versions = req.result;
+        versions.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+        resolve(versions.map(v => ({
+          vid: v.vid,
+          savedAt: v.savedAt,
+          nodeCount: v.nodeCount || 0,
+        })));
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /** 從版本歷史還原 */
+  async restoreVersion(versionId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(VERSION_STORE, 'readonly');
+      const store = tx.objectStore(VERSION_STORE);
+      const req = store.get(Number(versionId));
+      req.onsuccess = () => {
+        const version = req.result;
+        if (!version) { resolve(null); return; }
+        resolve({
+          name: version.name,
+          mindmap: version.mindmap,
+          ink: version.ink,
+          nodeCount: version.nodeCount,
+        });
+      };
+      req.onerror = () => reject(req.error);
+    });
   }
 
   async remove(id) {
@@ -103,7 +192,6 @@ export class Storage {
       req.onerror = () => reject(req.error);
     });
 
-    // 同步刪除
     if (this.sync && this.sync.ready) {
       this.sync.delete(String(id)).catch(() => {});
     }

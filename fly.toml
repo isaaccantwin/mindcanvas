@@ -1,0 +1,26 @@
+# fly.toml — MindCanvas Fly.io 部署設定
+app = "mindcanvas"
+
+[build]
+
+[[services]]
+  port = 3000
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls"]
+
+  [[services.concurrency]]
+    hard_limit = 25
+    soft_limit = 10
+    type = "connections"
+
+[[mounts]]
+  source = "mindcanvas_data"
+  destination = "/data"

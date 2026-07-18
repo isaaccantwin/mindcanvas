@@ -17,7 +17,7 @@ import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = join(homedir(), 'mindcanvas-data');
+const DATA_DIR = process.env.DATA_DIR || join(homedir(), 'mindcanvas-data');
 const STATIC_DIR = join(__dirname, 'dist');
 
 // 確保資料目錄存在

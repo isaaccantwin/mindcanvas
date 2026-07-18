@@ -14,6 +14,7 @@ import { Toolbar } from './js/ui/Toolbar.js';
 import { FileManager } from './js/ui/FileManager.js';
 import { ContextMenu } from './js/ui/ContextMenu.js';
 import { GitSync } from './js/sync/GitSync.js';
+import { ImportExport } from './js/ui/ImportExport.js';
 
 class MindCanvasApp {
   constructor() {
@@ -35,6 +36,7 @@ class MindCanvasApp {
     this.toolbar = new Toolbar();
     this.fileManager = new FileManager(this.storage);
     this.contextMenu = new ContextMenu();
+    this.importer = new ImportExport(this.mindMap);
 
     this.mode = 'edit'; // 'edit' | 'ink'
     this.selectedNodeId = null;
@@ -177,6 +179,14 @@ class MindCanvasApp {
         ];
         this.contextMenu.show(e.x, e.y, items);
       }
+    });
+
+    // 雙擊編輯
+    this.events.setHandler('onDblClick', (e) => {
+      if (this.mode !== 'edit') return;
+      const world = this.ce.screenToWorld(e.x, e.y);
+      const node = this._hitTestNode(world.x, world.y);
+      if (node) this._editNode(node);
     });
   }
 
@@ -325,6 +335,9 @@ class MindCanvasApp {
     document.getElementById('btn-save').addEventListener('click', () => this._saveProject());
     document.getElementById('btn-open').addEventListener('click', () => this._openProject());
     document.getElementById('btn-export').addEventListener('click', () => this._exportPNG());
+    document.getElementById('btn-export-md').addEventListener('click', () => this._exportMarkdown());
+    document.getElementById('btn-import').addEventListener('click', () => this._importFile());
+    document.getElementById('btn-history').addEventListener('click', () => this._showHistory());
 
     // Zoom
     document.getElementById('btn-zoom-in').addEventListener('click', () => {
@@ -507,6 +520,7 @@ class MindCanvasApp {
     this.currentProjectId = data.id;
     this.currentProjectName = data.name;
     this.mindMap = MindMap.fromJSON(data.mindmap);
+    this.importer.mindMap = this.mindMap;
     if (data.ink) {
       this.ink = InkEngine.fromJSON(data.ink);
     } else {
@@ -527,6 +541,64 @@ class MindCanvasApp {
       this._loadProjectData(data);
       this.toolbar.setStatus(`已開啟：${data.name}`);
     }
+  }
+
+  // ─── 匯入 / 匯出 ───
+
+  _exportMarkdown() {
+    this.importer.mindMap = this.mindMap;
+    const md = this.importer.toMarkdown();
+    this.importer.download(`${this.currentProjectName}.md`, md);
+    this.toolbar.setStatus('✅ 已匯出 Markdown');
+  }
+
+  async _importFile() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.md,.mm,.json,.mindcanvas.json';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      try {
+        this.importer.mindMap = this.mindMap;
+        await this.importer.importFile(file);
+        this.layout.layout(this.mindMap);
+        this.selectedNodeId = this.mindMap.root?.id || null;
+        this.isDirty = true;
+        this.toolbar.setStatus(`✅ 已匯入：${file.name}`);
+      } catch (e) {
+        this.toolbar.setStatus(`❌ 匯入失敗：${e.message}`);
+      }
+    };
+    input.click();
+  }
+
+  async _showHistory() {
+    if (!this.currentProjectId) {
+      this.toolbar.setStatus('請先儲存檔案後才能檢視版本歷史');
+      return;
+    }
+    const versions = await this.storage.getVersions(this.currentProjectId);
+    if (versions.length === 0) {
+      this.toolbar.setStatus('無歷史版本');
+      return;
+    }
+
+    const items = versions.map(v => ({
+      label: `📅 ${new Date(v.savedAt).toLocaleString('zh-TW')} (${v.nodeCount} 節點)`,
+      action: async () => {
+        const data = await this.storage.restoreVersion(v.vid);
+        if (data) {
+          this._loadProjectData({ id: this.currentProjectId, ...data });
+          this.layout.layout(this.mindMap);
+          this.toolbar.setStatus(`✅ 已還原至 ${new Date(v.savedAt).toLocaleString('zh-TW')} 的版本`);
+        }
+      },
+    }));
+    items.push({ separator: true });
+    items.push({ label: '❌ 取消', action: () => {} });
+
+    this.contextMenu.show(100, 60, items);
   }
 
   _exportPNG() {
