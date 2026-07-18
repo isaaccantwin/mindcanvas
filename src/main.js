@@ -54,6 +54,7 @@ class MindCanvasApp {
     this._syncFrameCount = 0;
 
     this._initCanvas();
+    this._initAuth();
     this._initEvents();
     this._initKeyboard();
     this._initToolbarButtons();
@@ -76,6 +77,56 @@ class MindCanvasApp {
       });
       this.layout.layout(this.mindMap);
     });
+  }
+
+  _initAuth() {
+    const overlay = document.getElementById('login-overlay');
+    const input = document.getElementById('login-password');
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-error');
+
+    const doLogin = async () => {
+      const pwd = input.value.trim();
+      if (!pwd) return;
+      err.classList.add('hidden');
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd }),
+        });
+        const data = await res.json();
+        if (data.ok && data.open) {
+          overlay.style.display = 'none';
+          this.toolbar.setStatus('🔓 開放模式（無密碼）');
+        } else if (data.ok && data.token) {
+          sessionStorage.setItem('mindcanvas_token', data.token);
+          overlay.style.display = 'none';
+          this.toolbar.setStatus('🔐 已登入');
+        } else {
+          err.textContent = '❌ 密碼錯誤';
+          err.classList.remove('hidden');
+          input.value = '';
+          input.focus();
+        }
+      } catch {
+        // 離線模式：直接進入
+        overlay.style.display = 'none';
+        this.toolbar.setStatus('📡 離線模式');
+      }
+    };
+
+    btn.addEventListener('click', doLogin);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+    // 檢查是否已登入
+    const token = sessionStorage.getItem('mindcanvas_token');
+    if (token) {
+      fetch('/api/check?token=' + encodeURIComponent(token))
+        .then(r => r.json())
+        .then(d => { if (d.valid) overlay.style.display = 'none'; })
+        .catch(() => { overlay.style.display = 'none'; });
+    }
   }
 
   _initEvents() {
