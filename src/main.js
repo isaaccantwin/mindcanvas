@@ -52,6 +52,8 @@ class MindCanvasApp {
     this.isDirty = false;
     this.autoSaveTimer = null;
     this._syncFrameCount = 0;
+    this.authMode = null;
+    this.isGuest = false;
 
     this._initCanvas();
     this._initAuth();
@@ -84,6 +86,17 @@ class MindCanvasApp {
     const input = document.getElementById('login-password');
     const btn = document.getElementById('login-btn');
     const err = document.getElementById('login-error');
+    const guestBtn = document.getElementById('guest-btn');
+
+    const enterApp = (mode) => {
+      overlay.style.display = 'none';
+      this.authMode = mode; // 'user' | 'guest'
+      input.value = '';
+      if (mode === 'guest') {
+        this.toolbar.setStatus('🚶 訪客模式 · 資料不會同步備份');
+        this.isGuest = true;
+      }
+    };
 
     const doLogin = async () => {
       const pwd = input.value.trim();
@@ -97,11 +110,11 @@ class MindCanvasApp {
         });
         const data = await res.json();
         if (data.ok && data.open) {
-          overlay.style.display = 'none';
-          this.toolbar.setStatus('🔓 開放模式（無密碼）');
+          enterApp('user');
+          this.toolbar.setStatus('🔓 開放模式');
         } else if (data.ok && data.token) {
           sessionStorage.setItem('mindcanvas_token', data.token);
-          overlay.style.display = 'none';
+          enterApp('user');
           this.toolbar.setStatus('🔐 已登入');
         } else {
           err.textContent = '❌ 密碼錯誤';
@@ -110,22 +123,22 @@ class MindCanvasApp {
           input.focus();
         }
       } catch {
-        // 離線模式：直接進入
-        overlay.style.display = 'none';
+        enterApp('user');
         this.toolbar.setStatus('📡 離線模式');
       }
     };
 
     btn.addEventListener('click', doLogin);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+    guestBtn.addEventListener('click', () => enterApp('guest'));
 
     // 檢查是否已登入
     const token = sessionStorage.getItem('mindcanvas_token');
     if (token) {
       fetch('/api/check?token=' + encodeURIComponent(token))
         .then(r => r.json())
-        .then(d => { if (d.valid) overlay.style.display = 'none'; })
-        .catch(() => { overlay.style.display = 'none'; });
+        .then(d => { if (d.valid) enterApp('user'); this.toolbar.setStatus('🔐 已登入'); })
+        .catch(() => {});
     }
   }
 

@@ -510,16 +510,16 @@ html, body {
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.2s;
+  margin-bottom: 10px;
 }
 
 .login-box input[type="password"]:focus {
   border-color: var(--accent);
 }
 
-.login-box button {
+.login-btn-primary {
   width: 100%;
   padding: 12px;
-  margin-top: 12px;
   background: var(--accent);
   color: white;
   border: none;
@@ -530,13 +530,50 @@ html, body {
   transition: background 0.2s;
 }
 
-.login-box button:hover { background: var(--accent-dark); }
-.login-box button:active { transform: scale(0.98); }
+.login-btn-primary:hover { background: var(--accent-dark); }
+.login-btn-primary:active { transform: scale(0.98); }
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--ink-light);
+  font-size: 13px;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--toolbar-border);
+}
+
+.login-btn-guest {
+  width: 100%;
+  padding: 11px;
+  background: transparent;
+  color: var(--ink-medium);
+  border: 1px solid var(--node-border);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-btn-guest:hover {
+  background: rgba(200, 180, 140, 0.1);
+  border-color: var(--accent);
+  color: var(--ink-dark);
+}
+.login-btn-guest:active { transform: scale(0.98); }
 
 .login-hint {
   font-size: 12px;
   color: var(--ink-light);
-  margin-top: 12px;
+  margin-top: 14px;
+  line-height: 1.4;
 }
 
 .login-error {
