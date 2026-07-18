@@ -722,7 +722,7 @@ html, body {
 
 /* ─── Dashboard ─── */
 .dashboard {
-  display: flex; flex-direction: column;
+  display: none; flex-direction: column;
   width: 100%; height: 100%;
   background: var(--paper-bg);
   overflow: hidden;

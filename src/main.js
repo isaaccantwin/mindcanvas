@@ -151,8 +151,14 @@ class MindCanvasApp {
           sessionStorage.setItem('mc_token', 'sheets');
           this.authMode = 'user';
           this.authUsername = username;
+          this.isGuest = false;
           closeModal();
-          updateUI();
+          document.getElementById('dashboard').style.display = 'flex';
+          document.getElementById('toolbar').style.display = 'none';
+          document.getElementById('canvas-container').style.display = 'none';
+          document.getElementById('status-bar').style.display = 'none';
+          document.getElementById('dash-username').textContent = `👤 ${username}`;
+          this._renderDashboard();
         } else {
           loginErr.textContent = '❌ ' + data.error;
           loginErr.classList.remove('hidden');
@@ -165,8 +171,14 @@ class MindCanvasApp {
           sessionStorage.setItem('mc_token', 'local');
           this.authMode = 'user';
           this.authUsername = username;
+          this.isGuest = false;
           closeModal();
-          updateUI();
+          document.getElementById('dashboard').style.display = 'flex';
+          document.getElementById('toolbar').style.display = 'none';
+          document.getElementById('canvas-container').style.display = 'none';
+          document.getElementById('status-bar').style.display = 'none';
+          document.getElementById('dash-username').textContent = `👤 ${username}`;
+          this._renderDashboard();
         } else {
           loginErr.textContent = '❌ 無法連線伺服器，且無本機帳號';
           loginErr.classList.remove('hidden');
@@ -236,8 +248,14 @@ class MindCanvasApp {
           sessionStorage.setItem('mc_token', 'sheets');
           this.authMode = 'user';
           this.authUsername = username;
+          this.isGuest = false;
           closeModal();
-          updateUI();
+          document.getElementById('dashboard').style.display = 'flex';
+          document.getElementById('toolbar').style.display = 'none';
+          document.getElementById('canvas-container').style.display = 'none';
+          document.getElementById('status-bar').style.display = 'none';
+          document.getElementById('dash-username').textContent = `👤 ${username}`;
+          this._renderDashboard();
         } else {
           regErr.textContent = '❌ ' + data.error;
           regErr.classList.remove('hidden');
@@ -256,8 +274,14 @@ class MindCanvasApp {
         sessionStorage.setItem('mc_token', 'local');
         this.authMode = 'user';
         this.authUsername = username;
+        this.isGuest = false;
         closeModal();
-        updateUI();
+        document.getElementById('dashboard').style.display = 'flex';
+        document.getElementById('toolbar').style.display = 'none';
+        document.getElementById('canvas-container').style.display = 'none';
+        document.getElementById('status-bar').style.display = 'none';
+        document.getElementById('dash-username').textContent = `👤 ${username}`;
+        this._renderDashboard();
       });
     };
 
@@ -283,7 +307,19 @@ class MindCanvasApp {
         this.isGuest = false;
       } catch {}
     }
-    updateUI();
+    if (this.authMode === 'user') {
+      document.getElementById('dashboard').style.display = 'flex';
+      document.getElementById('toolbar').style.display = 'none';
+      document.getElementById('canvas-container').style.display = 'none';
+      document.getElementById('status-bar').style.display = 'none';
+      document.getElementById('dash-username').textContent = `👤 ${this.authUsername}`;
+      this._renderDashboard();
+    } else {
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('toolbar').style.display = 'flex';
+      document.getElementById('canvas-container').style.display = 'block';
+      document.getElementById('status-bar').style.display = 'flex';
+    }
   }
 
   // ─── Dashboard Init ───
