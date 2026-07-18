@@ -1,18 +1,48 @@
 /**
  * Vercel Serverless Function: Google Sheets 帳號同步
  * POST /api/sheets  { action: "login" | "register", username, password }
+ *
+ * 使用 google-auth-library + direct REST calls
+ * 避免 googleapis 套件過大
  */
-import { google } from 'googleapis';
+import { GoogleAuth } from 'google-auth-library';
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
-const PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+const PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '')
+  .replace(/\\n/g, '\n')
+  .replace(/"([^"]*)"/g, '$1');
 
-async function getSheetClient() {
-  const auth = new google.auth.JWT(CLIENT_EMAIL, null, PRIVATE_KEY, [
-    'https://www.googleapis.com/auth/spreadsheets',
-  ]);
-  return google.sheets({ version: 'v4', auth });
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+
+async function getAccessToken() {
+  const auth = new GoogleAuth({
+    credentials: {
+      client_email: CLIENT_EMAIL,
+      private_key: PRIVATE_KEY,
+    },
+    scopes: SCOPES,
+  });
+  const client = await auth.getClient();
+  const token = await client.getAccessToken();
+  return token.token;
+}
+
+async function sheetsFetch(method, range, body) {
+  const token = await getAccessToken();
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}`;
+  const url = method === 'GET' ? base : `${base}:append?valueInputOption=USER_ENTERED`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+  return data;
 }
 
 export default async function handler(req, res) {
@@ -29,42 +59,31 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: '缺少欄位' });
     }
 
-    const sheets = await getSheetClient();
-
     if (action === 'register') {
       // 檢查是否已存在
-      const existing = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID,
-        range: 'A:A',
-      });
-      const rows = existing.data.values || [];
+      const existing = await sheetsFetch('GET', 'A:A');
+      const rows = existing.values || [];
       for (const [u] of rows) {
         if (u === username) {
-          return res.status(409).json({ ok: false, error: '此名稱已被註冊' });
+          return res.status(200).json({ ok: false, error: '此名稱已被註冊' });
         }
       }
       // 寫入新帳號
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID,
-        range: 'A:C',
-        valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[username, password, new Date().toISOString()]] },
+      await sheetsFetch('POST', 'A:C', {
+        values: [[username, password, new Date().toISOString()]],
       });
       return res.status(200).json({ ok: true });
     }
 
     if (action === 'login') {
-      const result = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID,
-        range: 'A:B',
-      });
-      const rows = result.data.values || [];
+      const result = await sheetsFetch('GET', 'A:B');
+      const rows = result.values || [];
       for (const [u, p] of rows) {
         if (u === username && p === password) {
           return res.status(200).json({ ok: true, username });
         }
       }
-      return res.status(401).json({ ok: false, error: '帳號或密碼錯誤' });
+      return res.status(200).json({ ok: false, error: '帳號或密碼錯誤' });
     }
 
     return res.status(400).json({ ok: false, error: 'unknown action' });
