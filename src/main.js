@@ -54,9 +54,12 @@ class MindCanvasApp {
     this._syncFrameCount = 0;
     this.authMode = null;
     this.isGuest = false;
+    this._currentProject = null;
+    this._view = 'canvas'; // 'dashboard' | 'canvas'
 
     this._initCanvas();
     this._initAuth();
+    this._initDashboard();
     this._initEvents();
     this._initKeyboard();
     this._initToolbarButtons();
@@ -102,10 +105,12 @@ class MindCanvasApp {
         el('auth-label').textContent = `👤 ${this.authUsername}`;
         this.toolbar.setStatus(`👤 ${this.authUsername} · 已登入`);
         this.isGuest = false;
+        this._showDashboard();
       } else {
         el('auth-label').textContent = '🚶 訪客';
         this.toolbar.setStatus('🚶 訪客模式 · 資料只存本機');
         this.isGuest = true;
+        this._showCanvas();
       }
     };
 
@@ -241,6 +246,7 @@ class MindCanvasApp {
       this.authMode = 'guest';
       this.authUsername = null;
       updateUI();
+      this._showCanvas(); // 登出回到 canvas
     });
 
     // ── 檢查 session ──
@@ -253,6 +259,189 @@ class MindCanvasApp {
       } catch {}
     }
     updateUI();
+  }
+
+  // ─── Dashboard Init ───
+
+  _initDashboard() {
+    // 如果沒有 dashboard 元素（build 舊版），跳過
+    if (!document.getElementById('dashboard')) return;
+
+    // 新增專案
+    document.getElementById('dash-new-project').addEventListener('click', () => {
+      const name = prompt('專案名稱：', '未命名心智圖');
+      if (!name) return;
+      const id = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      const storeId = this.storage.save({
+        name,
+        mindmap: new MindMap().toJSON(),
+        ink: new InkEngine().toJSON(),
+        nodeCount: 0,
+      }).then(result => {
+        const items = JSON.parse(localStorage.getItem('mc_projects') || '[]');
+        items.push({ id, storeId: result.id, name, folderId: null, updatedAt: new Date().toISOString() });
+        localStorage.setItem('mc_projects', JSON.stringify(items));
+        const project = items[items.length - 1];
+        this._currentProject = project;
+        this.currentProjectId = result.id;
+        this.currentProjectName = name;
+        this.mindMap = new MindMap();
+        this.mindMap.createRoot('中央主題');
+        this.importer.mindMap = this.mindMap;
+        this.ink = new InkEngine();
+        this.layout.layout(this.mindMap);
+        this._showCanvas();
+      });
+    });
+
+    // 新增資料夾
+    document.getElementById('dash-new-folder').addEventListener('click', () => {
+      const name = prompt('資料夾名稱：');
+      if (!name) return;
+      const folders = JSON.parse(localStorage.getItem('mc_folders') || '[]');
+      folders.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), name });
+      localStorage.setItem('mc_folders', JSON.stringify(folders));
+      this._renderDashboard();
+    });
+
+    // 登出
+    document.getElementById('dash-logout').addEventListener('click', () => {
+      sessionStorage.removeItem('mc_user');
+      this.authMode = 'guest';
+      this.authUsername = null;
+      this.isGuest = true;
+      this._showCanvas();
+    });
+  }
+
+  // ─── Dashboard / View Switching ───
+
+  _showDashboard() {
+    this._view = 'dashboard';
+    document.getElementById('dashboard').style.display = 'flex';
+    document.getElementById('toolbar').style.display = 'none';
+    document.getElementById('canvas-container').style.display = 'none';
+    document.getElementById('status-bar').style.display = 'none';
+    document.getElementById('dash-username').textContent = `👤 ${this.authUsername || '訪客'}`;
+    this._renderDashboard();
+  }
+
+  _showCanvas() {
+    this._view = 'canvas';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('toolbar').style.display = 'flex';
+    document.getElementById('canvas-container').style.display = 'block';
+    document.getElementById('status-bar').style.display = 'flex';
+    const bt = document.getElementById('btn-back');
+    if (bt) bt.style.display = this.authMode === 'user' ? '' : 'none';
+    this.ce.resize();
+  }
+
+  _goBackToDashboard() {
+    // 儲存當前專案
+    this._saveProjectInternal().then(() => {
+      this._showDashboard();
+    }).catch(() => this._showDashboard());
+  }
+
+  _renderDashboard() {
+    const container = document.getElementById('dash-content');
+    const items = JSON.parse(localStorage.getItem('mc_projects') || '[]');
+    const folders = JSON.parse(localStorage.getItem('mc_folders') || '[]');
+
+    document.getElementById('dash-count').textContent = `${items.length} 個專案`;
+
+    if (items.length === 0 && folders.length === 0) {
+      container.innerHTML = `
+        <div class="dash-empty">
+          <p>還沒有專案</p>
+          <div class="dash-empty-sub">點「新增專案」開始第一個心智圖</div>
+        </div>`;
+      return;
+    }
+
+    // 分類：有資料夾的 vs 未分類的
+    let html = '';
+    const usedFolderIds = new Set();
+
+    for (const folder of folders) {
+      const folderItems = items.filter(p => p.folderId === folder.id);
+      if (folderItems.length === 0) continue;
+      usedFolderIds.add(folder.id);
+      html += `
+        <div class="dash-folder">
+          <div class="dash-folder-header">
+            <span class="dash-folder-toggle">▼</span>
+            📁 ${folder.name}
+          </div>
+          <div class="dash-items">
+            ${folderItems.map(p => this._projectCard(p)).join('')}
+          </div>
+        </div>`;
+    }
+
+    const uncategorized = items.filter(p => !p.folderId || !usedFolderIds.has(p.folderId));
+    if (uncategorized.length > 0) {
+      html += `<div class="dash-uncategorized">📄 未分類</div><div class="dash-items">`;
+      html += uncategorized.map(p => this._projectCard(p)).join('');
+      html += `</div>`;
+    }
+
+    container.innerHTML = html;
+
+    // 綁事件
+    container.querySelectorAll('.dash-project').forEach(el => {
+      el.addEventListener('click', () => this._openProjectById(el.dataset.id));
+    });
+    container.querySelectorAll('.dash-project-delete').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._deleteProject(el.dataset.id);
+      });
+    });
+  }
+
+  _projectCard(project) {
+    const date = project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('zh-TW') : '剛剛';
+    return `
+      <div class="dash-project" data-id="${project.id}">
+        <span class="dash-project-icon">🧠</span>
+        <div class="dash-project-info">
+          <div class="dash-project-name">${project.name}</div>
+          <div class="dash-project-date">${date}</div>
+        </div>
+        <button class="dash-project-delete" data-id="${project.id}">🗑</button>
+      </div>`;
+  }
+
+  _openProjectById(id) {
+    const items = JSON.parse(localStorage.getItem('mc_projects') || '[]');
+    const project = items.find(p => String(p.id) === String(id));
+    if (!project) return;
+    this._currentProject = project;
+    this.currentProjectId = project.storeId;
+    this.currentProjectName = project.name;
+    // 從 storage 載入資料
+    this.storage.load(project.storeId).then(data => {
+      if (data) {
+        this.mindMap = MindMap.fromJSON(data.mindmap);
+        this.importer.mindMap = this.mindMap;
+        if (data.ink) this.ink = InkEngine.fromJSON(data.ink);
+        this.layout.layout(this.mindMap);
+        this.selectedNodeId = this.mindMap.root?.id || null;
+        this._showCanvas();
+      }
+    });
+  }
+
+  _deleteProject(id) {
+    if (!confirm('確定刪除此專案？')) return;
+    let items = JSON.parse(localStorage.getItem('mc_projects') || '[]');
+    const project = items.find(p => String(p.id) === String(id));
+    items = items.filter(p => String(p.id) !== String(id));
+    localStorage.setItem('mc_projects', JSON.stringify(items));
+    if (project) this.storage.remove(project.storeId);
+    this._renderDashboard();
   }
 
   _initEvents() {
@@ -513,6 +702,7 @@ class MindCanvasApp {
     document.getElementById('btn-open').addEventListener('click', () => this._openProject());
     document.getElementById('btn-export').addEventListener('click', () => this._exportPNG());
     document.getElementById('btn-export-md').addEventListener('click', () => this._exportMarkdown());
+    document.getElementById('btn-back').addEventListener('click', () => this._goBackToDashboard());
     document.getElementById('btn-import').addEventListener('click', () => this._importFile());
     document.getElementById('btn-history').addEventListener('click', () => this._showHistory());
 
