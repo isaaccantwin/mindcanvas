@@ -12,25 +12,46 @@
 </head>
 <body>
   <div id="app">
-    <!-- Login overlay -->
-    <div id="login-overlay" class="login-overlay">
+    <!-- Auth overlay -->
+    <div id="auth-overlay" class="login-overlay">
       <div class="login-box">
-        <div class="login-icon">🧠</div>
-        <h1>MindCanvas</h1>
-        <p class="login-subtitle">手寫心智圖</p>
-
-        <!-- 登入模式 -->
-        <div id="login-mode" class="login-mode">
-          <div id="login-error" class="login-error hidden"></div>
-          <input type="password" id="login-password" placeholder="請輸入密碼" />
-          <button id="login-btn" class="login-btn-primary">登入</button>
+        <!-- 歡迎畫面 (default) -->
+        <div id="auth-welcome" class="auth-screen">
+          <div class="login-icon">🧠</div>
+          <h1>MindCanvas</h1>
+          <p class="login-subtitle">手寫心智圖</p>
+          <button id="guest-btn2" class="login-btn-guest" style="margin-top:8px">🚶 訪客模式繼續</button>
+          <div class="login-divider"><span>已經有帳號？</span></div>
+          <button id="show-login-btn" class="login-btn-ghost">登入</button>
+          <div class="login-divider"><span>還沒有帳號？</span></div>
+          <button id="show-register-btn" class="login-btn-ghost">註冊帳號</button>
+          <p class="login-hint" style="margin-top:18px">訪客資料只存於此瀏覽器</p>
         </div>
 
-        <div class="login-divider"><span>或</span></div>
+        <!-- 登入畫面 -->
+        <div id="auth-login" class="auth-screen hidden">
+          <div class="login-icon">🔐</div>
+          <h1>登入</h1>
+          <p class="login-subtitle">輸入你的帳號密碼</p>
+          <div id="login-error" class="login-error hidden"></div>
+          <input type="text" id="login-username" placeholder="使用者名稱" />
+          <input type="password" id="login-password2" placeholder="密碼" />
+          <button id="login-btn2" class="login-btn-primary">登入</button>
+          <button id="back-welcome-from-login" class="login-btn-back">← 返回</button>
+        </div>
 
-        <!-- 訪客模式 -->
-        <button id="guest-btn" class="login-btn-guest">🚶 訪客模式繼續</button>
-        <p class="login-hint">訪客資料只存於此瀏覽器，不會同步備份</p>
+        <!-- 註冊畫面 -->
+        <div id="auth-register" class="auth-screen hidden">
+          <div class="login-icon">📝</div>
+          <h1>註冊帳號</h1>
+          <p class="login-subtitle">建立你的心智圖帳號</p>
+          <div id="register-error" class="login-error hidden"></div>
+          <input type="text" id="reg-username" placeholder="使用者名稱" />
+          <input type="password" id="reg-password" placeholder="密碼" />
+          <input type="password" id="reg-confirm" placeholder="確認密碼" />
+          <button id="register-btn" class="login-btn-primary">註冊</button>
+          <button id="back-welcome-from-reg" class="login-btn-back">← 返回</button>
+        </div>
       </div>
     </div>
 

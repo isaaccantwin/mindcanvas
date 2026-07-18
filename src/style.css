@@ -569,6 +569,41 @@ html, body {
 }
 .login-btn-guest:active { transform: scale(0.98); }
 
+.login-btn-ghost {
+  width: 100%;
+  padding: 11px;
+  background: transparent;
+  color: var(--accent-dark);
+  border: 1px solid var(--accent-light);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-btn-ghost:hover {
+  background: var(--accent-light);
+  color: var(--accent-dark);
+}
+.login-btn-ghost:active { transform: scale(0.98); }
+
+.login-btn-back {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--ink-light);
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: color 0.2s;
+}
+
+.login-btn-back:hover { color: var(--ink-dark); }
+
+.auth-screen.hidden { display: none; }
+
 .login-hint {
   font-size: 12px;
   color: var(--ink-light);

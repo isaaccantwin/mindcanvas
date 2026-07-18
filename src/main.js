@@ -82,64 +82,119 @@ class MindCanvasApp {
   }
 
   _initAuth() {
-    const overlay = document.getElementById('login-overlay');
-    const input = document.getElementById('login-password');
-    const btn = document.getElementById('login-btn');
-    const err = document.getElementById('login-error');
-    const guestBtn = document.getElementById('guest-btn');
+    const overlay = document.getElementById('auth-overlay');
+    if (!overlay) return;
 
-    const enterApp = (mode) => {
+    const screens = {
+      welcome: document.getElementById('auth-welcome'),
+      login: document.getElementById('auth-login'),
+      register: document.getElementById('auth-register'),
+    };
+    const show = (name) => {
+      Object.values(screens).forEach(s => s.classList.add('hidden'));
+      screens[name]?.classList.remove('hidden');
+    };
+
+    const errLogin = document.getElementById('login-error');
+    const errReg = document.getElementById('register-error');
+
+    const enterApp = (mode, username) => {
       overlay.style.display = 'none';
-      this.authMode = mode; // 'user' | 'guest'
-      input.value = '';
+      this.authMode = mode;
+      this.authUsername = username || null;
       if (mode === 'guest') {
-        this.toolbar.setStatus('🚶 訪客模式 · 資料不會同步備份');
         this.isGuest = true;
+        this.toolbar.setStatus('🚶 訪客模式 · 資料只存本機');
+      } else {
+        this.toolbar.setStatus(`👤 ${username} · 已登入`);
       }
     };
 
-    const doLogin = async () => {
-      const pwd = input.value.trim();
-      if (!pwd) return;
-      err.classList.add('hidden');
+    document.getElementById('guest-btn2').addEventListener('click', () => enterApp('guest'));
+    document.getElementById('show-login-btn').addEventListener('click', () => show('login'));
+    document.getElementById('show-register-btn').addEventListener('click', () => show('register'));
+    document.getElementById('back-welcome-from-login').addEventListener('click', () => show('welcome'));
+    document.getElementById('back-welcome-from-reg').addEventListener('click', () => show('welcome'));
+
+    // ── 登入 ──
+    const doLogin = () => {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password2').value;
+      errLogin.classList.add('hidden');
+      if (!username || !password) {
+        errLogin.textContent = '請填寫使用者名稱和密碼';
+        errLogin.classList.remove('hidden');
+        return;
+      }
+      const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
+      if (!data[username]) {
+        errLogin.textContent = '❌ 帳號不存在';
+        errLogin.classList.remove('hidden');
+        return;
+      }
+      if (data[username] !== password) {
+        errLogin.textContent = '❌ 密碼錯誤';
+        errLogin.classList.remove('hidden');
+        return;
+      }
+      sessionStorage.setItem('mc_user', JSON.stringify({ username }));
+      enterApp('user', username);
+    };
+    document.getElementById('login-btn2').addEventListener('click', doLogin);
+    document.getElementById('login-password2').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLogin();
+    });
+
+    // ── 註冊 ──
+    const doRegister = () => {
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm = document.getElementById('reg-confirm').value;
+      errReg.classList.add('hidden');
+      if (!username || !password || !confirm) {
+        errReg.textContent = '請填寫所有欄位';
+        errReg.classList.remove('hidden');
+        return;
+      }
+      if (password.length < 3) {
+        errReg.textContent = '密碼至少 3 個字元';
+        errReg.classList.remove('hidden');
+        return;
+      }
+      if (password !== confirm) {
+        errReg.textContent = '❌ 兩次密碼不一致';
+        errReg.classList.remove('hidden');
+        return;
+      }
+      const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
+      if (data[username]) {
+        errReg.textContent = '❌ 此名稱已被註冊';
+        errReg.classList.remove('hidden');
+        return;
+      }
+      data[username] = password;
+      localStorage.setItem('mc_users', JSON.stringify(data));
+      sessionStorage.setItem('mc_user', JSON.stringify({ username }));
+      enterApp('user', username);
+    };
+    document.getElementById('register-btn').addEventListener('click', doRegister);
+    document.getElementById('reg-confirm').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doRegister();
+    });
+
+    // ── 檢查是否已登入 ──
+    const saved = sessionStorage.getItem('mc_user');
+    if (saved) {
       try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pwd }),
-        });
-        const data = await res.json();
-        if (data.ok && data.open) {
-          enterApp('user');
-          this.toolbar.setStatus('🔓 開放模式');
-        } else if (data.ok && data.token) {
-          sessionStorage.setItem('mindcanvas_token', data.token);
-          enterApp('user');
-          this.toolbar.setStatus('🔐 已登入');
-        } else {
-          err.textContent = '❌ 密碼錯誤';
-          err.classList.remove('hidden');
-          input.value = '';
-          input.focus();
+        const { username } = JSON.parse(saved);
+        const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
+        if (data[username]) {
+          enterApp('user', username);
+          return;
         }
-      } catch {
-        enterApp('user');
-        this.toolbar.setStatus('📡 離線模式');
-      }
-    };
-
-    btn.addEventListener('click', doLogin);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-    guestBtn.addEventListener('click', () => enterApp('guest'));
-
-    // 檢查是否已登入
-    const token = sessionStorage.getItem('mindcanvas_token');
-    if (token) {
-      fetch('/api/check?token=' + encodeURIComponent(token))
-        .then(r => r.json())
-        .then(d => { if (d.valid) enterApp('user'); this.toolbar.setStatus('🔐 已登入'); })
-        .catch(() => {});
+      } catch {}
     }
+    show('welcome');
   }
 
   _initEvents() {
