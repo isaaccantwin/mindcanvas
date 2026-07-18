@@ -621,3 +621,101 @@ html, body {
 }
 
 .login-error.hidden { display: none; }
+
+/* ─── Auth Modal ─── */
+.auth-modal {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.auth-modal.hidden { display: none; }
+
+.auth-overlay-bg {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.auth-panel {
+  position: relative;
+  background: #faf6ef;
+  border: 1px solid var(--node-border);
+  border-radius: 16px;
+  padding: 36px 32px 24px;
+  width: 320px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+  text-align: center;
+}
+
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.auth-form.hidden { display: none; }
+
+.auth-icon { font-size: 40px; margin-bottom: 4px; }
+.auth-form h2 {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink-dark);
+  margin: 0 0 4px;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--node-border);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-family: var(--font-body);
+  background: white;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.auth-form input:focus { border-color: var(--accent); }
+
+.auth-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 4px;
+}
+
+.auth-btn:hover { background: var(--accent-dark); }
+.auth-btn:active { transform: scale(0.98); }
+
+.auth-btn-ghost {
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  color: var(--ink-light);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.auth-btn-ghost:hover { color: var(--ink-dark); }
+
+.auth-err {
+  font-size: 13px;
+  color: var(--danger);
+  padding: 6px 10px;
+  background: rgba(192,57,43,0.06);
+  border-radius: var(--radius-sm);
+}
+
+.auth-err.hidden { display: none; }
+
+.auth-label {
+  font-size: 12px;
+  color: var(--ink-light);
+  white-space: nowrap;
+  padding: 0 4px;
+}

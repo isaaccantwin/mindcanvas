@@ -82,119 +82,154 @@ class MindCanvasApp {
   }
 
   _initAuth() {
-    const overlay = document.getElementById('auth-overlay');
-    if (!overlay) return;
+    const modal = document.getElementById('auth-modal');
+    const panel = document.getElementById('auth-panel');
+    if (!modal) return;
 
-    const screens = {
-      welcome: document.getElementById('auth-welcome'),
-      login: document.getElementById('auth-login'),
-      register: document.getElementById('auth-register'),
-    };
-    const show = (name) => {
-      Object.values(screens).forEach(s => s.classList.add('hidden'));
-      screens[name]?.classList.remove('hidden');
-    };
+    const closeModal = () => modal.classList.add('hidden');
+    modal.querySelector('.auth-overlay-bg').addEventListener('click', closeModal);
 
-    const errLogin = document.getElementById('login-error');
-    const errReg = document.getElementById('register-error');
+    const el = (id) => document.getElementById(id);
+    const loginErr = el('login-err');
+    const regErr = el('reg-err');
 
-    const enterApp = (mode, username) => {
-      overlay.style.display = 'none';
-      this.authMode = mode;
-      this.authUsername = username || null;
-      if (mode === 'guest') {
-        this.isGuest = true;
-        this.toolbar.setStatus('🚶 訪客模式 · 資料只存本機');
+    const updateUI = () => {
+      const loggedIn = this.authMode === 'user';
+      el('btn-login').classList.toggle('hidden', loggedIn);
+      el('btn-register').classList.toggle('hidden', loggedIn);
+      el('btn-logout').classList.toggle('hidden', !loggedIn);
+      if (loggedIn) {
+        el('auth-label').textContent = `👤 ${this.authUsername}`;
+        this.toolbar.setStatus(`👤 ${this.authUsername} · 已登入`);
+        this.isGuest = false;
       } else {
-        this.toolbar.setStatus(`👤 ${username} · 已登入`);
+        el('auth-label').textContent = '🚶 訪客';
+        this.toolbar.setStatus('🚶 訪客模式 · 資料只存本機');
+        this.isGuest = true;
       }
     };
 
-    document.getElementById('guest-btn2').addEventListener('click', () => enterApp('guest'));
-    document.getElementById('show-login-btn').addEventListener('click', () => show('login'));
-    document.getElementById('show-register-btn').addEventListener('click', () => show('register'));
-    document.getElementById('back-welcome-from-login').addEventListener('click', () => show('welcome'));
-    document.getElementById('back-welcome-from-reg').addEventListener('click', () => show('welcome'));
+    // ── 預設為訪客 ──
+    this.authMode = 'guest';
+    this.authUsername = null;
+    this.isGuest = true;
 
-    // ── 登入 ──
+    // ── 顯示登入 modal ──
+    el('btn-login').addEventListener('click', () => {
+      el('form-login').classList.remove('hidden');
+      el('form-register').classList.add('hidden');
+      loginErr.classList.add('hidden');
+      el('login-user').value = '';
+      el('login-pass').value = '';
+      modal.classList.remove('hidden');
+      setTimeout(() => el('login-user').focus(), 100);
+    });
+
+    el('login-cancel').addEventListener('click', closeModal);
+
     const doLogin = () => {
-      const username = document.getElementById('login-username').value.trim();
-      const password = document.getElementById('login-password2').value;
-      errLogin.classList.add('hidden');
+      const username = el('login-user').value.trim();
+      const password = el('login-pass').value;
+      loginErr.classList.add('hidden');
       if (!username || !password) {
-        errLogin.textContent = '請填寫使用者名稱和密碼';
-        errLogin.classList.remove('hidden');
+        loginErr.textContent = '請填寫使用者名稱和密碼';
+        loginErr.classList.remove('hidden');
         return;
       }
       const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
       if (!data[username]) {
-        errLogin.textContent = '❌ 帳號不存在';
-        errLogin.classList.remove('hidden');
+        loginErr.textContent = '❌ 帳號不存在';
+        loginErr.classList.remove('hidden');
         return;
       }
       if (data[username] !== password) {
-        errLogin.textContent = '❌ 密碼錯誤';
-        errLogin.classList.remove('hidden');
+        loginErr.textContent = '❌ 密碼錯誤';
+        loginErr.classList.remove('hidden');
         return;
       }
       sessionStorage.setItem('mc_user', JSON.stringify({ username }));
-      enterApp('user', username);
+      this.authMode = 'user';
+      this.authUsername = username;
+      closeModal();
+      updateUI();
     };
-    document.getElementById('login-btn2').addEventListener('click', doLogin);
-    document.getElementById('login-password2').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') doLogin();
+
+    el('login-submit').addEventListener('click', doLogin);
+    el('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+    // ── 顯示註冊 modal ──
+    el('btn-register').addEventListener('click', () => {
+      el('form-register').classList.remove('hidden');
+      el('form-login').classList.add('hidden');
+      regErr.classList.add('hidden');
+      el('reg-user').value = '';
+      el('reg-pass').value = '';
+      el('reg-confirm').value = '';
+      modal.classList.remove('hidden');
+      setTimeout(() => el('reg-user').focus(), 100);
     });
 
-    // ── 註冊 ──
+    el('reg-cancel').addEventListener('click', closeModal);
+
     const doRegister = () => {
-      const username = document.getElementById('reg-username').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const confirm = document.getElementById('reg-confirm').value;
-      errReg.classList.add('hidden');
+      const username = el('reg-user').value.trim();
+      const password = el('reg-pass').value;
+      const confirm = el('reg-confirm').value;
+      regErr.classList.add('hidden');
       if (!username || !password || !confirm) {
-        errReg.textContent = '請填寫所有欄位';
-        errReg.classList.remove('hidden');
+        regErr.textContent = '請填寫所有欄位';
+        regErr.classList.remove('hidden');
         return;
       }
       if (password.length < 3) {
-        errReg.textContent = '密碼至少 3 個字元';
-        errReg.classList.remove('hidden');
+        regErr.textContent = '密碼至少 3 個字元';
+        regErr.classList.remove('hidden');
         return;
       }
       if (password !== confirm) {
-        errReg.textContent = '❌ 兩次密碼不一致';
-        errReg.classList.remove('hidden');
+        regErr.textContent = '❌ 兩次密碼不一致';
+        regErr.classList.remove('hidden');
         return;
       }
       const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
       if (data[username]) {
-        errReg.textContent = '❌ 此名稱已被註冊';
-        errReg.classList.remove('hidden');
+        regErr.textContent = '❌ 此名稱已被註冊';
+        regErr.classList.remove('hidden');
         return;
       }
       data[username] = password;
       localStorage.setItem('mc_users', JSON.stringify(data));
       sessionStorage.setItem('mc_user', JSON.stringify({ username }));
-      enterApp('user', username);
+      this.authMode = 'user';
+      this.authUsername = username;
+      closeModal();
+      updateUI();
     };
-    document.getElementById('register-btn').addEventListener('click', doRegister);
-    document.getElementById('reg-confirm').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') doRegister();
+
+    el('reg-submit').addEventListener('click', doRegister);
+    el('reg-confirm').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
+
+    // ── 登出 ──
+    el('btn-logout').addEventListener('click', () => {
+      sessionStorage.removeItem('mc_user');
+      this.authMode = 'guest';
+      this.authUsername = null;
+      updateUI();
     });
 
-    // ── 檢查是否已登入 ──
+    // ── 檢查 session ──
     const saved = sessionStorage.getItem('mc_user');
     if (saved) {
       try {
         const { username } = JSON.parse(saved);
         const data = JSON.parse(localStorage.getItem('mc_users') || '{}');
         if (data[username]) {
-          enterApp('user', username);
-          return;
+          this.authMode = 'user';
+          this.authUsername = username;
         }
       } catch {}
     }
-    show('welcome');
+    updateUI();
   }
 
   _initEvents() {

@@ -12,45 +12,29 @@
 </head>
 <body>
   <div id="app">
-    <!-- Auth overlay -->
-    <div id="auth-overlay" class="login-overlay">
-      <div class="login-box">
-        <!-- 歡迎畫面 (default) -->
-        <div id="auth-welcome" class="auth-screen">
-          <div class="login-icon">🧠</div>
-          <h1>MindCanvas</h1>
-          <p class="login-subtitle">手寫心智圖</p>
-          <button id="guest-btn2" class="login-btn-guest" style="margin-top:8px">🚶 訪客模式繼續</button>
-          <div class="login-divider"><span>已經有帳號？</span></div>
-          <button id="show-login-btn" class="login-btn-ghost">登入</button>
-          <div class="login-divider"><span>還沒有帳號？</span></div>
-          <button id="show-register-btn" class="login-btn-ghost">註冊帳號</button>
-          <p class="login-hint" style="margin-top:18px">訪客資料只存於此瀏覽器</p>
+    <div id="auth-modal" class="auth-modal hidden">
+      <div class="auth-overlay-bg"></div>
+      <div class="auth-panel" id="auth-panel">
+        <!-- Login form -->
+        <div id="form-login" class="auth-form">
+          <div class="auth-icon">🔐</div>
+          <h2>登入</h2>
+          <div id="login-err" class="auth-err hidden"></div>
+          <input type="text" id="login-user" placeholder="使用者名稱" />
+          <input type="password" id="login-pass" placeholder="密碼" />
+          <button id="login-submit" class="auth-btn">登入</button>
+          <button id="login-cancel" class="auth-btn-ghost">取消</button>
         </div>
-
-        <!-- 登入畫面 -->
-        <div id="auth-login" class="auth-screen hidden">
-          <div class="login-icon">🔐</div>
-          <h1>登入</h1>
-          <p class="login-subtitle">輸入你的帳號密碼</p>
-          <div id="login-error" class="login-error hidden"></div>
-          <input type="text" id="login-username" placeholder="使用者名稱" />
-          <input type="password" id="login-password2" placeholder="密碼" />
-          <button id="login-btn2" class="login-btn-primary">登入</button>
-          <button id="back-welcome-from-login" class="login-btn-back">← 返回</button>
-        </div>
-
-        <!-- 註冊畫面 -->
-        <div id="auth-register" class="auth-screen hidden">
-          <div class="login-icon">📝</div>
-          <h1>註冊帳號</h1>
-          <p class="login-subtitle">建立你的心智圖帳號</p>
-          <div id="register-error" class="login-error hidden"></div>
-          <input type="text" id="reg-username" placeholder="使用者名稱" />
-          <input type="password" id="reg-password" placeholder="密碼" />
+        <!-- Register form -->
+        <div id="form-register" class="auth-form hidden">
+          <div class="auth-icon">📝</div>
+          <h2>註冊帳號</h2>
+          <div id="reg-err" class="auth-err hidden"></div>
+          <input type="text" id="reg-user" placeholder="使用者名稱" />
+          <input type="password" id="reg-pass" placeholder="密碼" />
           <input type="password" id="reg-confirm" placeholder="確認密碼" />
-          <button id="register-btn" class="login-btn-primary">註冊</button>
-          <button id="back-welcome-from-reg" class="login-btn-back">← 返回</button>
+          <button id="reg-submit" class="auth-btn">註冊</button>
+          <button id="reg-cancel" class="auth-btn-ghost">取消</button>
         </div>
       </div>
     </div>
@@ -124,6 +108,12 @@
         <button id="btn-fit" class="tool-btn" title="重置視圖">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
         </button>
+      </div>
+      <div class="toolbar-group" id="auth-tools">
+        <button id="btn-login" class="tool-btn" title="登入">🔐</button>
+        <button id="btn-register" class="tool-btn" title="註冊">📝</button>
+        <button id="btn-logout" class="tool-btn hidden" title="登出">🚪</button>
+        <span id="auth-label" class="auth-label">🚶 訪客</span>
       </div>
     </div>
 
