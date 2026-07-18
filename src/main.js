@@ -154,12 +154,23 @@ class MindCanvasApp {
           closeModal();
           updateUI();
         } else {
-          loginErr.textContent = data.error === '帳號或密碼錯誤' ? '❌ 帳號或密碼錯誤' : '❌ ' + data.error;
+          loginErr.textContent = '❌ ' + data.error;
           loginErr.classList.remove('hidden');
         }
       }).catch(() => {
-        loginErr.textContent = '❌ 無法連線伺服器';
-        loginErr.classList.remove('hidden');
+        // fallback: localStorage
+        const local = JSON.parse(localStorage.getItem('mc_users') || '{}');
+        if (local[username] && local[username] === password) {
+          sessionStorage.setItem('mc_user', JSON.stringify({ username }));
+          sessionStorage.setItem('mc_token', 'local');
+          this.authMode = 'user';
+          this.authUsername = username;
+          closeModal();
+          updateUI();
+        } else {
+          loginErr.textContent = '❌ 無法連線伺服器，且無本機帳號';
+          loginErr.classList.remove('hidden');
+        }
       });
     };
 
@@ -232,8 +243,21 @@ class MindCanvasApp {
           regErr.classList.remove('hidden');
         }
       }).catch(() => {
-        regErr.textContent = '❌ 無法連線伺服器';
-        regErr.classList.remove('hidden');
+        // fallback: localStorage
+        const local = JSON.parse(localStorage.getItem('mc_users') || '{}');
+        if (local[username]) {
+          regErr.textContent = '❌ 此名稱已被註冊（本機）';
+          regErr.classList.remove('hidden');
+          return;
+        }
+        local[username] = password;
+        localStorage.setItem('mc_users', JSON.stringify(local));
+        sessionStorage.setItem('mc_user', JSON.stringify({ username }));
+        sessionStorage.setItem('mc_token', 'local');
+        this.authMode = 'user';
+        this.authUsername = username;
+        closeModal();
+        updateUI();
       });
     };
 
