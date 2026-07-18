@@ -181,13 +181,28 @@ class MindCanvasApp {
         regErr.classList.remove('hidden');
         return;
       }
-      if (password.length < 3) {
-        regErr.textContent = '密碼至少 3 個字元';
+      if (password !== confirm) {
+        regErr.textContent = '❌ 兩次密碼不一致';
         regErr.classList.remove('hidden');
         return;
       }
-      if (password !== confirm) {
-        regErr.textContent = '❌ 兩次密碼不一致';
+      if (password.length < 8) {
+        regErr.textContent = '密碼需 8 位元以上';
+        regErr.classList.remove('hidden');
+        return;
+      }
+      if (!/[A-Z]/.test(password)) {
+        regErr.textContent = '密碼需包含大寫英文字母';
+        regErr.classList.remove('hidden');
+        return;
+      }
+      if (!/[a-z]/.test(password)) {
+        regErr.textContent = '密碼需包含小寫英文字母';
+        regErr.classList.remove('hidden');
+        return;
+      }
+      if (!/[0-9]/.test(password)) {
+        regErr.textContent = '密碼需包含數字';
         regErr.classList.remove('hidden');
         return;
       }
