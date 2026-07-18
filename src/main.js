@@ -251,11 +251,12 @@ class MindCanvasApp {
 
     // ── 檢查 session ──
     const saved = sessionStorage.getItem('mc_user');
-    if (saved && sessionStorage.getItem('mc_token') === 'sheets') {
+    if (saved) {
       try {
         const { username } = JSON.parse(saved);
         this.authMode = 'user';
         this.authUsername = username;
+        this.isGuest = false;
       } catch {}
     }
     updateUI();
