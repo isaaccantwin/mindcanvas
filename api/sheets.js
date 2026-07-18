@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     const { action, username, password } = req.body || {};
     const params = new URLSearchParams({ action, username, password });
 
-    const result = await fetch(`${AS_URL}?${params}`);
+    const result = await fetch(`${AS_URL}?${params}`, { redirect: 'follow' });
     const data = await result.json();
     return res.status(200).json(data);
   } catch (e) {
