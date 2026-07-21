@@ -54,6 +54,7 @@ jobs:
 
       - name: Build debug APK
         run: |
+          chmod +x android/gradlew
           cd android
           ./gradlew assembleDebug
 
@@ -72,6 +73,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > android/keystore.jks
+          chmod +x android/gradlew
           cd android
           ./gradlew bundleRelease \
             -Pandroid.injected.signing.store.file=keystore.jks \
