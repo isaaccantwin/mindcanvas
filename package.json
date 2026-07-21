@@ -9,9 +9,14 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
     "simple-git": "^3.36.0"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
     "vite": "^6.3.5"
   }
 }
