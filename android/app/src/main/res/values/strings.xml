@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MindCanvas</string>
+    <string name="title_activity_main">MindCanvas</string>
+    <string name="package_name">com.isaaccantwin.mindcanvas</string>
+    <string name="custom_url_scheme">com.isaaccantwin.mindcanvas</string>
+</resources>

@@ -50,7 +50,9 @@ jobs:
           EOF
 
       - name: Sync Capacitor Android
-        run: npx cap sync android
+        run: |
+          npx cap add android --skip-gitignore
+          npx cap sync android
 
       - name: Build debug APK
         run: |
